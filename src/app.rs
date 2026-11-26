@@ -46,6 +46,8 @@ const GO_BACK: &str = "media-skip-backward-symbolic";
 const GO_NEXT: &str = "media-skip-forward-symbolic";
 const PAUSE: &str = "media-playback-pause-symbolic";
 const PLAY: &str = "media-playback-start-symbolic";
+/// The cog that opens Customize, from COSMIC's icon theme.
+const SETTINGS: &str = "emblem-system-symbolic";
 
 pub struct NowPlaying {
     core: app::Core,
@@ -167,6 +169,17 @@ fn divided<'a>() -> Element<'a, Message> {
     let space = theme::active().cosmic().spacing;
     padded_control(divider::horizontal::default())
         .padding([space.space_xxs, space.space_s])
+        .into()
+}
+
+/// The cog in the card's corner, opening Customize.
+fn settings_button<'a>() -> Element<'a, Message> {
+    let space = theme::active().cosmic().spacing;
+    button::icon(widget::icon::from_name(SETTINGS).symbolic(true))
+        .icon_size(16)
+        .padding(space.space_xxxs)
+        .tooltip(fl!("customize"))
+        .on_press(Message::Customize(true))
         .into()
 }
 
@@ -628,28 +641,38 @@ impl cosmic::Application for NowPlaying {
 }
 
 impl NowPlaying {
+    /// The card, and under it only what's going on: other players to pick
+    /// from, apps recording, the battery charging. Customize is the cog in
+    /// the card's corner, so the card alone is the whole popup most of the time.
     fn activities_page(&self) -> Element<'_, Message> {
-        let mut content = widget::column::with_capacity(8).padding([8, 0]);
+        let space = theme::active().cosmic().spacing;
+        let mut content = widget::column::with_capacity(8);
+        let mut more = false;
         content = match self.shown_media() {
-            Some(media) => content.extend(self.now_playing(media)),
+            Some(media) => {
+                more |= self.media.len() > 1;
+                content.extend(self.now_playing(media))
+            }
             None => content.push(empty_section()),
         };
         if self.config.recording && !self.recorders.is_empty() {
+            more = true;
             content = content.push(divided()).push(self.recording_section());
         }
         if let Some(battery) = self.battery.filter(|b| b.charging && self.config.charging) {
+            more = true;
             content = content.push(divided()).push(battery_section(battery));
         }
-        // As the audio applet's "Sound settings", last.
-        content
-            .push(divided())
-            .push(menu_button(text::body(fl!("customize"))).on_press(Message::Customize(true)))
-            .into()
+        // Sections under the card get room under the last one.
+        if more {
+            content = content.padding([0, 0, space.space_xs, 0]);
+        }
+        content.into()
     }
 
     /// The card from the macOS menu bar: the cover on the left; on the
-    /// right the title with the bars beside it, the artist, the controls,
-    /// the progress, and under it the time gone and the time left.
+    /// right the title with the bars and the cog beside it, the artist, the
+    /// controls, the progress, and under it the time gone and the time left.
     fn now_playing<'a>(&'a self, media: &'a Media) -> Vec<Element<'a, Message>> {
         let space = theme::active().cosmic().spacing;
 
@@ -672,7 +695,13 @@ impl NowPlaying {
             .spacing(space.space_xxxs)
             .width(Length::Fill)
             .into(),
-            Bars::new(alpha(accent(), 0.9), media.playing, 16.0).into(),
+            widget::row::with_children(vec![
+                Bars::new(alpha(accent(), 0.9), media.playing, 16.0).into(),
+                settings_button(),
+            ])
+            .spacing(space.space_xxs)
+            .align_y(Alignment::Center)
+            .into(),
         ])
         .spacing(space.space_xs)
         .align_y(Alignment::Start);
@@ -753,8 +782,9 @@ impl NowPlaying {
         .align_y(Alignment::Center);
 
         let mut rows: Vec<Element<'a, Message>> = vec![
-            padded_control(card)
-                .padding([space.space_xs, space.space_m])
+            widget::container(card)
+                .padding([space.space_s, space.space_m])
+                .width(Length::Fill)
                 .into(),
         ];
 
@@ -896,9 +926,10 @@ impl NowPlaying {
     }
 }
 
+/// Nothing playing: a note, with the cog in the same corner as on the card.
 fn empty_section<'a>() -> Element<'a, Message> {
     let space = theme::active().cosmic().spacing;
-    padded_control(
+    widget::container(
         widget::row::with_children(vec![
             icon("audio-x-generic-symbolic", 24),
             widget::column::with_children(vec![
@@ -907,10 +938,13 @@ fn empty_section<'a>() -> Element<'a, Message> {
             ])
             .width(Length::Fill)
             .into(),
+            settings_button(),
         ])
         .spacing(space.space_s)
         .align_y(Alignment::Center),
     )
+    .padding([space.space_s, space.space_m])
+    .width(Length::Fill)
     .into()
 }
 
