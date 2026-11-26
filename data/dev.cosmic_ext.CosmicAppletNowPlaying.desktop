@@ -1,0 +1,16 @@
+[Desktop Entry]
+Name=Now Playing
+Name[pt_BR]=Now Playing
+Comment=Live activities in the panel: what's playing, apps recording, and the charger plugged in
+Comment[pt_BR]=Atividades ao vivo no painel: o que está tocando, apps gravando e o carregador ligado
+Type=Application
+Exec=cosmic-applet-now-playing
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Applet;Media;Music;MPRIS;Now;Playing;Player;
+Icon=dev.cosmic_ext.CosmicAppletNowPlaying-symbolic
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicHoverPopup=Auto
+X-HostWaylandDisplay=true

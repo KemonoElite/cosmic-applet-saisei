@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.cosmic_ext.CosmicAppletNowPlaying</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Now Playing</name>
+  <summary>Live activities in the panel: what's playing, apps recording, and the charger plugged in</summary>
+  <summary xml:lang="pt-BR">Atividades ao vivo no painel: o que está tocando, apps gravando e o carregador ligado</summary>
+  <description>
+    <p>Live activities in the COSMIC™ panel, like the iPhone's Now Playing. Click it to open a Now Playing card like the one in the macOS menu bar, drawn in your COSMIC theme.</p>
+    <ul>
+      <li>What's playing in any MPRIS player, with its cover, and bars dancing in the theme's accent color</li>
+      <li>The Now Playing card: a large cover, the title and artist, previous, play/pause and next, and a progress bar you can drag, with the time gone and the time left</li>
+      <li>Apps recording from the microphone, with a red dot and how long they have been recording</li>
+      <li>The charger plugged in, shown for a moment</li>
+      <li>Middle-click the applet to play or pause</li>
+    </ul>
+  </description>
+  <icon type="stock">dev.cosmic_ext.CosmicAppletNowPlaying</icon>
+  <launchable type="desktop-id">dev.cosmic_ext.CosmicAppletNowPlaying.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.2.0" date="2026-11-26"/>
+  </releases>
+  <provides>
+    <id>com.system76.CosmicApplet</id>
+    <binary>cosmic-applet-now-playing</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+  </categories>
+</component>
