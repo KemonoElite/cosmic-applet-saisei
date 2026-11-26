@@ -64,9 +64,14 @@ nix develop      # a shell with everything to build it
 Or in your system flake:
 
 ```nix
-inputs.now-playing.url = "path:/path/to/cosmic-applet-now-playing";
-# ...
-environment.systemPackages = [ inputs.now-playing.packages.${pkgs.system}.default ];
+inputs.cosmic-applet-now-playing = {
+  url = "github:KemonoElite/cosmic-applet-now-playing";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+
+# in the host's modules:
+inputs.cosmic-applet-now-playing.nixosModules.default
+{ programs.cosmic-applet-now-playing.enable = true; }
 ```
 
 The package wraps the program with `pactl` and `curl` on its `PATH`.

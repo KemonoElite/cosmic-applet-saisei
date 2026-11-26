@@ -12,7 +12,7 @@
     };
   };
 
-  # Laid out as pop-os/cosmic-applets' flake.
+  # Laid out as pop-os/cosmic-applets' flake, plus a NixOS module.
   outputs = { self, nixpkgs, flake-utils, nix-filter, crane, fenix }:
     flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
@@ -46,13 +46,13 @@
         now-playing = craneLib.buildPackage (pkgDef // {
           inherit cargoArtifacts;
           postInstall = ''
-            just rootdir= prefix=$out install-data
+            just prefix=$out install-data
             # pactl sees apps recording; curl fetches covers players give as links.
             wrapProgram $out/bin/cosmic-applet-now-playing \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.pulseaudio pkgs.curl ]}
           '';
           meta = {
-            description = "Live activities for the COSMIC panel";
+            description = "What's playing, apps recording and charging, in the COSMIC panel";
             license = pkgs.lib.licenses.gpl3Only;
             mainProgram = "cosmic-applet-now-playing";
             platforms = pkgs.lib.platforms.linux;
@@ -64,6 +64,7 @@
         };
 
         packages.default = now-playing;
+        packages.cosmic-applet-now-playing = now-playing;
 
         apps.default = flake-utils.lib.mkApp {
           drv = now-playing;
@@ -74,7 +75,33 @@
           packages = with pkgs; [ rust-analyzer pulseaudio ];
           LD_LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath (builtins.concatMap (d: d.runtimeDependencies) inputsFrom);
         };
-      });
+      })
+    // {
+      # programs.cosmic-applet-now-playing.enable = true;
+      nixosModules.default = self.nixosModules.cosmic-applet-now-playing;
+      nixosModules.cosmic-applet-now-playing = { config, lib, pkgs, ... }:
+        let
+          cfg = config.programs.cosmic-applet-now-playing;
+        in
+        {
+          options.programs.cosmic-applet-now-playing = {
+            enable = lib.mkEnableOption "the Now Playing applet for the COSMIC panel";
+
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+              defaultText = lib.literalExpression "cosmic-applet-now-playing.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+              description = "The Now Playing applet package to install.";
+            };
+          };
+
+          # The panel finds applets by their desktop entries in
+          # /run/current-system/sw/share/applications.
+          config = lib.mkIf cfg.enable {
+            environment.systemPackages = [ cfg.package ];
+          };
+        };
+    };
 
   nixConfig = {
     # Cache for the Rust toolchain in fenix
