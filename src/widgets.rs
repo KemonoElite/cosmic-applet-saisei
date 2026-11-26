@@ -4,7 +4,6 @@
 //! long, and icons in the theme's colors.
 
 use std::{
-    rc::Rc,
     sync::LazyLock,
     time::{Duration, Instant},
 };
@@ -12,7 +11,7 @@ use std::{
 use cosmic::{
     Element,
     iced::{
-        self, Border, Color, Event, Length, Point, Rectangle, Size, Vector,
+        Border, Color, Event, Length, Point, Rectangle, Size, Vector,
         advanced::{
             Clipboard, Layout, Renderer as _, Shell, Widget, layout, mouse, renderer,
             widget::{Tree, tree},
@@ -160,30 +159,6 @@ pub fn icon<'a, Message: 'a>(name: &str, size: u16) -> Element<'a, Message> {
         .size(size)
         .icon()
         .into()
-}
-
-/// A symbolic icon in one of the theme's colors: its accent, warning…
-pub fn tinted<'a, Message: 'a>(
-    name: &str,
-    size: u16,
-    color: fn(&cosmic::Theme) -> Color,
-) -> Element<'a, Message> {
-    widget::icon::icon(widget::icon::from_name(name).symbolic(true).handle())
-        .size(size)
-        .class(theme::Svg::Custom(Rc::new(move |theme| {
-            iced::widget::svg::Style {
-                color: Some(color(theme)),
-            }
-        })))
-        .into()
-}
-
-pub fn destructive_of(theme: &cosmic::Theme) -> Color {
-    theme.cosmic().destructive_color().into()
-}
-
-pub fn success_of(theme: &cosmic::Theme) -> Color {
-    theme.cosmic().success_color().into()
 }
 
 /// How long a long line holds still before it scrolls, and between scrolls.

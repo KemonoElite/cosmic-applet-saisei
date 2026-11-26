@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-//! Now Playing: what's going on in the panel (music, apps recording, the
-//! charger plugged in), opening into a Now Playing card like the one in the
-//! macOS menu bar, drawn with COSMIC's theme as its own applets are.
+//! Now Playing: what's playing, in the panel, opening into a Now Playing
+//! card like the one in the macOS menu bar, drawn with COSMIC's theme as its
+//! own applets are.
 
 use std::{
     collections::HashMap,
@@ -27,18 +27,16 @@ use cosmic::{
 };
 
 use crate::{
-    config::{NowPlayingConfig, TitleWidth, Toggle},
+    config::{NowPlayingConfig, Toggle},
     fl,
     media::{self, Control, Media},
-    power::{self, Battery},
-    recording::{self, Recorder},
-    widgets::{Bars, Marquee, accent, alpha, destructive_of, icon, success_of, tinted},
+    widgets::{Bars, Marquee, accent, alpha, icon},
 };
 
 /// A paused player stays on the applet this long, then leaves it.
 const LINGER: Duration = Duration::from_secs(5 * 60);
-/// How long the applet shows the charger plugged in.
-const FLASH_CHARGING: Duration = Duration::from_secs(4);
+/// How wide the title gets on the panel, at most.
+const TITLE_WIDTH: f32 = 240.0;
 /// The cover in the popup, as big as the card is high.
 const COVER: f32 = 112.0;
 
@@ -57,28 +55,14 @@ pub struct NowPlaying {
     paused_since: HashMap<String, Instant>,
     /// Where the progress is being dragged to, in microseconds.
     seeking: Option<f32>,
-    battery: Option<Battery>,
-    /// When the charger was plugged in, shown for a moment.
-    plugged_in: Option<Instant>,
-    /// Apps recording from a microphone, and since when.
-    recorders: Vec<(Recorder, Instant)>,
     config: NowPlayingConfig,
     config_handler: Option<cosmic_config::Config>,
-    /// The popup's settings page, instead of the activities.
+    /// The popup's settings page, instead of the card.
     customizing: bool,
     /// Where the applet is in the panel, for the popup to open under it
     /// however wide the applet has grown.
     rectangle_tracker: Option<RectangleTracker<u32>>,
     rectangle: Option<Rectangle>,
-}
-
-/// What the applet shows, the most pressing first.
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Activity<'a> {
-    Charging,
-    Recording(Instant),
-    Media(&'a Media),
-    Idle,
 }
 
 #[derive(Clone, Debug)]
@@ -91,12 +75,10 @@ pub enum Message {
     SelectPlayer(String),
     Seek(f32),
     SeekDone,
-    Battery(Option<Battery>),
-    Recording(Vec<Recorder>),
     Customize(bool),
     Set(Toggle, bool),
-    SetTitleWidth(TitleWidth),
     ConfigChanged(NowPlayingConfig),
+    /// Time passing: the progress moves, a paused player leaves.
     Tick,
     Ignore,
 }
@@ -115,17 +97,6 @@ fn run<F: Future<Output = zbus::Result<()>> + Send + 'static>(
 
 fn one_line() -> Ellipsize {
     Ellipsize::End(EllipsizeHeightLimit::Lines(1))
-}
-
-/// How long since, as a stopwatch: 0:07, 1:02:03.
-fn since(start: Instant) -> String {
-    let seconds = start.elapsed().as_secs();
-    let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-    if h > 0 {
-        format!("{h}:{m:02}:{s:02}")
-    } else {
-        format!("{m}:{s:02}")
-    }
 }
 
 /// A place in the song, as the macOS player shows it: 01:07, 1:02:03.
@@ -151,15 +122,6 @@ fn applet_icon() -> widget::icon::Handle {
         )[..],
     )
     .symbolic(true)
-}
-
-fn battery_icon(percentage: f64, charging: bool) -> String {
-    let level = ((percentage / 10.0).round() * 10.0).clamp(0.0, 100.0) as u32;
-    match (level, charging) {
-        (100, true) => "battery-level-100-charged-symbolic".to_owned(),
-        (_, true) => format!("battery-level-{level}-charging-symbolic"),
-        (_, false) => format!("battery-level-{level}-symbolic"),
-    }
 }
 
 /// The divider between a popup's sections, as cosmic-applets draws it.
@@ -226,26 +188,9 @@ impl NowPlaying {
                 .is_some_and(|since| since.elapsed() < LINGER)
     }
 
-    fn charging_flash(&self) -> bool {
-        self.plugged_in
-            .is_some_and(|at| at.elapsed() < FLASH_CHARGING)
-    }
-
-    fn activity(&self) -> Activity<'_> {
-        if self.charging_flash() {
-            return Activity::Charging;
-        }
-        // Someone listening comes first, as the phone's orange dot.
-        if let Some((_, since)) = self.recorders.first().filter(|_| self.config.recording) {
-            return Activity::Recording(*since);
-        }
-        match self
-            .shown_media()
-            .filter(|m| self.config.media && self.is_live(m))
-        {
-            Some(media) => Activity::Media(media),
-            None => Activity::Idle,
-        }
+    /// The player on the panel: playing, or paused not long ago.
+    fn live_media(&self) -> Option<&Media> {
+        self.shown_media().filter(|m| self.is_live(m))
     }
 
     /// What the applet shows in the panel, beside each other.
@@ -255,60 +200,24 @@ impl NowPlaying {
         let side = f32::from(size);
         let horizontal = applet.is_horizontal();
         let mut parts: Vec<Element<'_, Message>> = Vec::with_capacity(3);
-        let label = |text: String, width: f32| -> Element<'_, Message> {
-            applet
-                .text(text)
-                .ellipsize(one_line())
-                .width(Length::Fixed(width))
-                .into()
+        let Some(media) = self.live_media() else {
+            return parts;
         };
-
-        match self.activity() {
-            Activity::Idle => {}
-            Activity::Recording(since) => {
-                parts.push(tinted("media-record-symbolic", size, destructive_of));
-                if horizontal {
-                    // Wide enough for 59:59, or 9:59:59.
-                    let width = if since.elapsed().as_secs() >= 3600 {
-                        64.0
-                    } else {
-                        44.0
-                    };
-                    parts.push(label(self::since(since), width));
-                }
-            }
-            Activity::Media(media) => {
-                let config = &self.config;
-                if config.show_cover {
-                    parts.push(cover(media, side));
-                }
-                if horizontal && config.show_title {
-                    // As wide as the title, up to the width picked.
-                    let title = applet.text(media.title.clone()).ellipsize(one_line());
-                    parts.push(
-                        widget::container(title)
-                            .max_width(config.title_width.pixels())
-                            .into(),
-                    );
-                }
-                if config.show_bars {
-                    parts.push(Bars::new(accent(), media.playing, side).into());
-                }
-                // All turned off: a note, not nothing.
-                if parts.is_empty() {
-                    parts.push(icon("audio-x-generic-symbolic", size));
-                }
-            }
-            Activity::Charging => {
-                let percentage = self.battery.map_or(0.0, |b| b.percentage);
-                parts.push(tinted(&battery_icon(percentage, true), size, success_of));
-                if horizontal {
-                    parts.push(label(
-                        format!("{} · {percentage:.0}%", fl!("charging")),
-                        130.0,
-                    ));
-                }
-            }
+        let config = &self.config;
+        if config.show_cover {
+            parts.push(cover(media, side));
+        }
+        if horizontal && config.show_title {
+            // As wide as the title, up to a point.
+            let title = applet.text(media.title.clone()).ellipsize(one_line());
+            parts.push(widget::container(title).max_width(TITLE_WIDTH).into());
+        }
+        if config.show_bars {
+            parts.push(Bars::new(accent(), media.playing, side).into());
+        }
+        // All turned off: a note, not nothing.
+        if parts.is_empty() {
+            parts.push(icon("audio-x-generic-symbolic", size));
         }
         parts
     }
@@ -365,9 +274,6 @@ impl cosmic::Application for NowPlaying {
                 selected: None,
                 paused_since: HashMap::new(),
                 seeking: None,
-                battery: None,
-                plugged_in: None,
-                recorders: Vec::new(),
                 config,
                 config_handler,
                 customizing: false,
@@ -495,44 +401,13 @@ impl cosmic::Application for NowPlaying {
                     return run("seek", media::seek(service, track, position as i64));
                 }
             }
-            Message::Battery(battery) => {
-                let was_charging = self.battery.map(|b| b.charging);
-                if self.config.charging
-                    && was_charging == Some(false)
-                    && battery.is_some_and(|b| b.charging)
-                {
-                    self.plugged_in = Some(Instant::now());
-                }
-                self.battery = battery;
-            }
-            Message::Recording(recorders) => {
-                // Each keeps the time it started at.
-                let now = Instant::now();
-                self.recorders = recorders
-                    .into_iter()
-                    .map(|recorder| {
-                        let since = self
-                            .recorders
-                            .iter()
-                            .find(|(r, _)| r.key == recorder.key)
-                            .map_or(now, |(_, since)| *since);
-                        (recorder, since)
-                    })
-                    .collect();
-            }
             Message::Customize(customizing) => self.customizing = customizing,
             Message::Set(toggle, value) => {
                 self.config.set(self.config_handler.as_ref(), toggle, value);
             }
-            Message::SetTitleWidth(width) => {
-                self.config.set_width(self.config_handler.as_ref(), width);
-            }
             Message::ConfigChanged(config) => self.config = config,
-            Message::Tick => {
-                if self.plugged_in.is_some() && !self.charging_flash() {
-                    self.plugged_in = None;
-                }
-            }
+            // Only to draw again.
+            Message::Tick => {}
             Message::Ignore => {}
         }
         Task::none()
@@ -550,17 +425,13 @@ impl cosmic::Application for NowPlaying {
                 }),
             rectangle_tracker_subscription(0).map(|update| Message::Rectangle(update.1)),
             media::subscription().map(Message::Media),
-            power::subscription().map(Message::Battery),
-            recording::subscription().map(Message::Recording),
         ];
-        let lingering = self.config.media
-            && self
-                .paused_since
-                .values()
-                .any(|since| since.elapsed() < LINGER);
+        let lingering = self
+            .paused_since
+            .values()
+            .any(|since| since.elapsed() < LINGER);
         let progressing = self.popup.is_some() && self.shown_media().is_some_and(|m| m.playing);
-        let recording = self.config.recording && !self.recorders.is_empty();
-        let every = if self.plugged_in.is_some() || progressing || recording {
+        let every = if progressing {
             Some(Duration::from_millis(500))
         } else if lingering {
             // Only to let the player go, in its time.
@@ -632,7 +503,7 @@ impl cosmic::Application for NowPlaying {
         let content = if self.customizing {
             self.settings_page()
         } else {
-            self.activities_page()
+            self.now_playing_page()
         };
         self.core.applet.popup_container(content).into()
     }
@@ -643,33 +514,20 @@ impl cosmic::Application for NowPlaying {
 }
 
 impl NowPlaying {
-    /// The card, and under it only what's going on: other players to pick
-    /// from, apps recording, the battery charging. Customize is the toggle
-    /// in the card's corner, so the card alone is the whole popup most of the time.
-    fn activities_page(&self) -> Element<'_, Message> {
+    /// The card, and under it, with more than one player open, the others to
+    /// pick from. Customize is the toggle in the card's corner.
+    fn now_playing_page(&self) -> Element<'_, Message> {
         let space = theme::active().cosmic().spacing;
-        let mut content = widget::column::with_capacity(8);
-        let mut more = false;
-        content = match self.shown_media() {
-            Some(media) => {
-                more |= self.media.len() > 1;
-                content.extend(self.now_playing(media))
-            }
-            None => content.push(empty_section()),
-        };
-        if self.config.recording && !self.recorders.is_empty() {
-            more = true;
-            content = content.push(divided()).push(self.recording_section());
+        let content = widget::column::with_capacity(3);
+        match self.shown_media() {
+            // The players listed under the card get room under them.
+            Some(media) if self.media.len() > 1 => content
+                .extend(self.now_playing(media))
+                .padding([0, 0, space.space_xs, 0])
+                .into(),
+            Some(media) => content.extend(self.now_playing(media)).into(),
+            None => content.push(empty_section()).into(),
         }
-        if let Some(battery) = self.battery.filter(|b| b.charging && self.config.charging) {
-            more = true;
-            content = content.push(divided()).push(battery_section(battery));
-        }
-        // Sections under the card get room under the last one.
-        if more {
-            content = content.padding([0, 0, space.space_xs, 0]);
-        }
-        content.into()
     }
 
     /// The card from the macOS menu bar: the cover on the left; on the
@@ -828,8 +686,7 @@ impl NowPlaying {
         rows
     }
 
-    /// What the applet shows, to turn on and off: in the panel, and which
-    /// activities.
+    /// What the applet shows on the panel, to turn on and off.
     fn settings_page(&self) -> Element<'_, Message> {
         let space = theme::active().cosmic().spacing;
         let config = &self.config;
@@ -845,25 +702,6 @@ impl NowPlaying {
         let heading = |label: String| -> Element<'_, Message> {
             padded_control(text::caption_heading(label)).into()
         };
-        let widths = TitleWidth::ALL
-            .iter()
-            .map(|&width| {
-                let name = match width {
-                    TitleWidth::Small => fl!("small"),
-                    TitleWidth::Medium => fl!("medium"),
-                    TitleWidth::Large => fl!("large"),
-                };
-                let pick = Message::SetTitleWidth(width);
-                let button = if width == config.title_width {
-                    button::suggested(name)
-                } else {
-                    button::standard(name)
-                };
-                button
-                    .on_press_maybe(config.show_title.then_some(pick))
-                    .into()
-            })
-            .collect::<Vec<_>>();
         let back = menu_button(
             widget::row::with_children(vec![
                 icon("go-previous-symbolic", 16),
@@ -877,60 +715,12 @@ impl NowPlaying {
             back.into(),
             divided(),
             heading(fl!("on-the-panel")),
-            toggle(fl!("show-cover"), Toggle::ShowCover),
-            toggle(fl!("show-title"), Toggle::ShowTitle),
-            padded_control(
-                widget::column::with_children(vec![
-                    text::body(fl!("title-width")).into(),
-                    widget::row::with_children(widths)
-                        .spacing(space.space_xxs)
-                        .into(),
-                ])
-                .spacing(space.space_xxs),
-            )
-            .into(),
-            toggle(fl!("show-bars"), Toggle::ShowBars),
-            divided(),
-            heading(fl!("activities")),
-            toggle(fl!("media"), Toggle::Media),
-            toggle(fl!("recording-activity"), Toggle::Recording),
-            toggle(fl!("charging-activity"), Toggle::Charging),
+            toggle(fl!("show-cover"), Toggle::Cover),
+            toggle(fl!("show-title"), Toggle::Title),
+            toggle(fl!("show-bars"), Toggle::Bars),
         ])
         .padding([8, 0])
         .into()
-    }
-
-    /// Who records, each with its icon and for how long.
-    fn recording_section(&self) -> Element<'_, Message> {
-        let space = theme::active().cosmic().spacing;
-        let rows = self
-            .recorders
-            .iter()
-            .map(|(recorder, start)| {
-                let app_icon: Element<'_, Message> = match &recorder.icon {
-                    Some(path) => widget::icon::icon(widget::icon::from_path(path.clone()))
-                        .size(32)
-                        .into(),
-                    None => icon("audio-input-microphone-symbolic", 32),
-                };
-                widget::row::with_children(vec![
-                    app_icon,
-                    widget::column::with_children(vec![
-                        text::heading(recorder.name.clone())
-                            .ellipsize(one_line())
-                            .into(),
-                        text::caption(format!("{} · {}", fl!("recording"), since(*start))).into(),
-                    ])
-                    .width(Length::Fill)
-                    .into(),
-                    tinted("media-record-symbolic", 16, destructive_of),
-                ])
-                .spacing(space.space_s)
-                .align_y(Alignment::Center)
-                .into()
-            })
-            .collect::<Vec<_>>();
-        padded_control(widget::column::with_children(rows).spacing(space.space_xs)).into()
     }
 }
 
@@ -953,38 +743,5 @@ fn empty_section<'a>() -> Element<'a, Message> {
     )
     .padding([space.space_s, space.space_m])
     .width(Length::Fill)
-    .into()
-}
-
-fn battery_section<'a>(battery: Battery) -> Element<'a, Message> {
-    let space = theme::active().cosmic().spacing;
-    let mut about = vec![
-        text::heading(if battery.full {
-            fl!("charged")
-        } else {
-            fl!("charging")
-        })
-        .into(),
-    ];
-    if let Some(seconds) = battery.time_to_full {
-        let (h, m) = (seconds / 3600, seconds / 60 % 60);
-        let time = if h > 0 {
-            format!("{h} h {m} min")
-        } else {
-            format!("{m} min")
-        };
-        about.push(text::caption(fl!("until-full", time = time)).into());
-    }
-    padded_control(
-        widget::row::with_children(vec![
-            tinted(&battery_icon(battery.percentage, true), 24, success_of),
-            widget::column::with_children(about)
-                .width(Length::Fill)
-                .into(),
-            text::title4(format!("{:.0}%", battery.percentage)).into(),
-        ])
-        .spacing(space.space_s)
-        .align_y(Alignment::Center),
-    )
     .into()
 }

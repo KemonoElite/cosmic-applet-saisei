@@ -1,8 +1,8 @@
 [Desktop Entry]
 Name=Now Playing
 Name[pt_BR]=Now Playing
-Comment=Live activities in the panel: what's playing, apps recording, and the charger plugged in
-Comment[pt_BR]=Atividades ao vivo no painel: o que está tocando, apps gravando e o carregador ligado
+Comment=What's playing, in the panel, with a Now Playing card like macOS's
+Comment[pt_BR]=O que está tocando, no painel, com um cartão Now Playing como o do macOS
 Type=Application
 Exec=cosmic-applet-now-playing
 Terminal=false

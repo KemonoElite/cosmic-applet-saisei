@@ -914,7 +914,6 @@ dependencies = [
  "libcosmic",
  "rust-embed",
  "serde",
- "serde_json",
  "tokio",
  "tracing",
  "tracing-log",

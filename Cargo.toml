@@ -3,7 +3,7 @@ name = "cosmic-applet-now-playing"
 version = "0.2.0"
 edition = "2024"
 license = "GPL-3.0-only"
-description = "Live activities for the COSMIC panel: what's playing, apps recording, and the charger plugged in"
+description = "What's playing in the COSMIC panel, opening into a Now Playing card like macOS's"
 rust-version = "1.95"
 
 [dependencies]
@@ -22,7 +22,6 @@ libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = fa
 ] }
 rust-embed = "8.11.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1"
 tokio = { version = "1.49.0", features = ["full"] }
 tracing = "0.1"
 tracing-log = "0.2.0"

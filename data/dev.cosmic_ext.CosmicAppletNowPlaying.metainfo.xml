@@ -4,15 +4,13 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <name>Now Playing</name>
-  <summary>Live activities in the panel: what's playing, apps recording, and the charger plugged in</summary>
-  <summary xml:lang="pt-BR">Atividades ao vivo no painel: o que está tocando, apps gravando e o carregador ligado</summary>
+  <summary>What's playing, in the panel, with a Now Playing card like macOS's</summary>
+  <summary xml:lang="pt-BR">O que está tocando, no painel, com um cartão Now Playing como o do macOS</summary>
   <description>
-    <p>Live activities in the COSMIC™ panel, like the iPhone's Now Playing. Click it to open a Now Playing card like the one in the macOS menu bar, drawn in your COSMIC theme.</p>
+    <p>What's playing, in the COSMIC™ panel. Click it to open a Now Playing card like the one in the macOS menu bar, drawn in your COSMIC theme.</p>
     <ul>
       <li>What's playing in any MPRIS player, with its cover, and bars dancing in the theme's accent color</li>
       <li>The Now Playing card: a large cover, the title and artist, previous, play/pause and next, and a progress bar you can drag, with the time gone and the time left</li>
-      <li>Apps recording from the microphone, with a red dot and how long they have been recording</li>
-      <li>The charger plugged in, shown for a moment</li>
       <li>Middle-click the applet to play or pause</li>
     </ul>
   </description>

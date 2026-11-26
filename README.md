@@ -3,15 +3,11 @@
 A rewrite of [cosmic-ext-applet-dynamic-island](https://github.com/DrakRosmann/cosmic-ext-applet-dynamic-island),
 laid out like the applets in [pop-os/cosmic-applets](https://github.com/pop-os/cosmic-applets).
 
-In the panel, the applet shows the most important thing going on:
+In the panel, the applet shows what's playing: the cover, the title and bars that move in your
+accent color while it plays. It works with any MPRIS player (Spotify, browsers, VLC, mpv,
+Rhythmbox…). A paused player leaves the applet after 5 minutes.
 
-- **Media**: the cover, the title and bars that move in your accent color while it plays.
-  It works with any MPRIS player (Spotify, browsers, VLC, mpv, Rhythmbox…). A paused player
-  leaves the applet after 5 minutes.
-- **Recording**: when an app records from the microphone, a red dot and how long it has been recording.
-- **Charging**: when you plug in the charger, "Charging" and the percentage, for a moment.
-
-With nothing going on, it shows only its icon, like the other applets.
+With nothing playing, it shows only its icon, like the other applets.
 Middle-click the applet to play or pause.
 
 ## The popup
@@ -24,10 +20,8 @@ Clicking the applet opens a Now Playing card like the one in the macOS menu bar:
 - previous, play/pause and next, flat, with play/pause larger
 - a progress bar you can drag, with the time played and the time left under it (`01:07`, `−02:59`)
 
-With more than one player open, they are listed under the card to pick from. Apps recording
-and the battery show below it only while they are active. The toggle opens **Customize**,
-which picks what the panel shows (the cover, the title and its maximum width, the bars) and which activities
-the applet follows.
+With more than one player open, they are listed under the card to pick from. The toggle opens
+**Customize**, which turns the cover, the title and the bars on the panel on or off.
 
 ## What changed from the original
 
@@ -46,7 +40,7 @@ the applet follows.
 ## Install
 
 You need Rust 1.95 or newer, `just`, and libcosmic's build dependencies (`libxkbcommon`,
-`wayland`, `libEGL`, `pkg-config`). At runtime, `pactl` is used to see apps recording and `curl`
+`wayland`, `libEGL`, `pkg-config`). At runtime, `curl` is used
 to fetch covers players give as web links.
 
 ```sh
@@ -77,7 +71,7 @@ inputs.cosmic-applet-now-playing.nixosModules.default
 { programs.cosmic-applet-now-playing.enable = true; }
 ```
 
-The package wraps the program with `pactl` and `curl` on its `PATH`.
+The package wraps the program with `curl` on its `PATH`.
 
 ## Development
 

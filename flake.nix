@@ -1,5 +1,5 @@
 {
-  description = "Now Playing: what's playing, apps recording and charging, in the COSMIC panel";
+  description = "Now Playing: what's playing, in the COSMIC panel";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -48,12 +48,12 @@
           inherit cargoArtifacts;
           postInstall = ''
             just prefix=$out install-data
-            # pactl sees apps recording; curl fetches covers players give as links.
+            # curl fetches covers players give as web links.
             wrapProgram $out/bin/cosmic-applet-now-playing \
-              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.pulseaudio pkgs.curl ]}
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.curl ]}
           '';
           meta = {
-            description = "What's playing, apps recording and charging, in the COSMIC panel";
+            description = "What's playing, in the COSMIC panel";
             license = pkgs.lib.licenses.gpl3Only;
             mainProgram = "cosmic-applet-now-playing";
             platforms = pkgs.lib.platforms.linux;
@@ -73,7 +73,7 @@
 
         devShells.default = pkgs.mkShell rec {
           inputsFrom = builtins.attrValues self.checks.${system};
-          packages = with pkgs; [ rust-analyzer pulseaudio ];
+          packages = with pkgs; [ rust-analyzer ];
           LD_LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath (builtins.concatMap (d: d.runtimeDependencies) inputsFrom);
         };
       })

@@ -8,8 +8,6 @@ mod app;
 mod config;
 mod localize;
 mod media;
-mod power;
-mod recording;
 mod widgets;
 
 pub const APP_ID: &str = "dev.cosmic_ext.CosmicAppletNowPlaying";
