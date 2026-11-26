@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-//! The bars that dance to the music, and icons in the theme's colors.
+//! The bars that dance to the music, the title that scrolls when it's too
+//! long, and icons in the theme's colors.
 
 use std::{
     rc::Rc,
@@ -11,9 +12,10 @@ use std::{
 use cosmic::{
     Element,
     iced::{
-        self, Border, Color, Event, Length, Rectangle, Size,
+        self, Border, Color, Event, Length, Point, Rectangle, Size, Vector,
         advanced::{
-            Clipboard, Layout, Renderer as _, Shell, Widget, layout, mouse, renderer, widget::Tree,
+            Clipboard, Layout, Renderer as _, Shell, Widget, layout, mouse, renderer,
+            widget::{Tree, tree},
         },
         window,
     },
@@ -182,4 +184,162 @@ pub fn destructive_of(theme: &cosmic::Theme) -> Color {
 
 pub fn success_of(theme: &cosmic::Theme) -> Color {
     theme.cosmic().success_color().into()
+}
+
+/// How long a long line holds still before it scrolls, and between scrolls.
+const MARQUEE_PAUSE: f32 = 2.5;
+/// How fast it scrolls, in pixels a second.
+const MARQUEE_SPEED: f32 = 32.0;
+/// The room between the end of the line and its start coming around again.
+const MARQUEE_GAP: f32 = 40.0;
+
+/// A line that scrolls when it is wider than its room, as the title in the
+/// macOS Now Playing card does: it holds still for a moment, glides left
+/// until its start comes around again, and holds still again. A line that
+/// fits stays put.
+pub struct Marquee<'a, Message> {
+    content: Element<'a, Message>,
+}
+
+impl<'a, Message> Marquee<'a, Message> {
+    pub fn new(content: impl Into<Element<'a, Message>>) -> Self {
+        Self {
+            content: content.into(),
+        }
+    }
+}
+
+/// When the line started over, and how wide it was then: a new, longer
+/// title starts from the beginning.
+struct MarqueeState {
+    start: Instant,
+    width: f32,
+}
+
+/// How far the line has scrolled by now, `cycle` being its width with the gap.
+fn marquee_offset(seconds: f32, cycle: f32) -> f32 {
+    let period = MARQUEE_PAUSE + cycle / MARQUEE_SPEED;
+    let t = seconds % period;
+    if t < MARQUEE_PAUSE {
+        0.0
+    } else {
+        ((t - MARQUEE_PAUSE) * MARQUEE_SPEED).min(cycle)
+    }
+}
+
+impl<Message> Widget<Message, cosmic::Theme, cosmic::Renderer> for Marquee<'_, Message> {
+    fn tag(&self) -> tree::Tag {
+        tree::Tag::of::<MarqueeState>()
+    }
+
+    fn state(&self) -> tree::State {
+        tree::State::new(MarqueeState {
+            start: Instant::now(),
+            width: 0.0,
+        })
+    }
+
+    fn children(&self) -> Vec<Tree> {
+        vec![Tree::new(&self.content)]
+    }
+
+    fn diff(&mut self, tree: &mut Tree) {
+        tree.diff_children(std::slice::from_mut(&mut self.content));
+    }
+
+    fn size(&self) -> Size<Length> {
+        Size::new(Length::Fill, Length::Shrink)
+    }
+
+    fn layout(
+        &mut self,
+        tree: &mut Tree,
+        renderer: &cosmic::Renderer,
+        limits: &layout::Limits,
+    ) -> layout::Node {
+        let max = limits.max();
+        // The whole line, however long; shown through its room.
+        let child = self.content.as_widget_mut().layout(
+            &mut tree.children[0],
+            renderer,
+            &layout::Limits::new(Size::ZERO, Size::new(f32::INFINITY, max.height)),
+        );
+        let line = child.size();
+        let state = tree.state.downcast_mut::<MarqueeState>();
+        if (state.width - line.width).abs() > 0.5 {
+            *state = MarqueeState {
+                start: Instant::now(),
+                width: line.width,
+            };
+        }
+        layout::Node::with_children(
+            Size::new(line.width.min(max.width), line.height),
+            vec![child],
+        )
+    }
+
+    fn update(
+        &mut self,
+        _tree: &mut Tree,
+        event: &Event,
+        layout: Layout<'_>,
+        _cursor: mouse::Cursor,
+        _renderer: &cosmic::Renderer,
+        _clipboard: &mut dyn Clipboard,
+        shell: &mut Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) {
+        let overflows = layout
+            .children()
+            .next()
+            .is_some_and(|line| line.bounds().width > layout.bounds().width + 0.5);
+        if overflows && let Event::Window(window::Event::RedrawRequested(now)) = event {
+            // About 30 frames a second while it scrolls; none while it fits.
+            shell.request_redraw_at(*now + Duration::from_millis(33));
+        }
+    }
+
+    fn draw(
+        &self,
+        tree: &Tree,
+        renderer: &mut cosmic::Renderer,
+        theme: &cosmic::Theme,
+        style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        viewport: &Rectangle,
+    ) {
+        let Some(line) = layout.children().next() else {
+            return;
+        };
+        let bounds = layout.bounds();
+        let content = self.content.as_widget();
+        let child = &tree.children[0];
+        let width = line.bounds().width;
+        if width <= bounds.width + 0.5 {
+            content.draw(child, renderer, theme, style, line, cursor, viewport);
+            return;
+        }
+        let cycle = width + MARQUEE_GAP;
+        let state = tree.state.downcast_ref::<MarqueeState>();
+        let offset = marquee_offset(state.start.elapsed().as_secs_f32(), cycle);
+        // The line, and its start coming around after it, seen through the room.
+        let everywhere = Rectangle::new(
+            Point::new(bounds.x - cycle, bounds.y),
+            Size::new(cycle * 3.0, bounds.height),
+        );
+        renderer.with_layer(bounds, |renderer| {
+            for shift in [-offset, cycle - offset] {
+                renderer.with_translation(Vector::new(shift, 0.0), |renderer| {
+                    content.draw(child, renderer, theme, style, line, cursor, &everywhere);
+                });
+            }
+        });
+    }
+}
+
+impl<'a, Message: 'a> From<Marquee<'a, Message>> for Element<'a, Message> {
+    fn from(marquee: Marquee<'a, Message>) -> Self {
+        Self::new(marquee)
+    }
 }

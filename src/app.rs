@@ -6,6 +6,7 @@
 
 use std::{
     collections::HashMap,
+    sync::LazyLock,
     time::{Duration, Instant},
 };
 
@@ -32,7 +33,7 @@ use crate::{
     media::{self, Control, Media},
     power::{self, Battery},
     recording::{self, Recorder},
-    widgets::{Bars, accent, alpha, destructive_of, icon, success_of, tinted},
+    widgets::{Bars, Marquee, accent, alpha, destructive_of, icon, success_of, tinted},
 };
 
 /// A paused player stays on the applet this long, then leaves it.
@@ -46,8 +47,10 @@ const GO_BACK: &str = "media-skip-backward-symbolic";
 const GO_NEXT: &str = "media-skip-forward-symbolic";
 const PAUSE: &str = "media-playback-pause-symbolic";
 const PLAY: &str = "media-playback-start-symbolic";
-/// The cog that opens Customize, from COSMIC's icon theme.
-const SETTINGS: &str = "emblem-system-symbolic";
+/// What opens Customize: the COSMIC Settings app's own icon, in color, as
+/// it ships only that one; the theme's cog where it isn't installed.
+const SETTINGS: &str = "com.system76.CosmicSettings";
+const SETTINGS_FALLBACK: &str = "emblem-system-symbolic";
 
 pub struct NowPlaying {
     core: app::Core,
@@ -172,11 +175,19 @@ fn divided<'a>() -> Element<'a, Message> {
         .into()
 }
 
-/// The cog in the card's corner, opening Customize.
+/// The Settings icon in the card's corner, opening Customize.
 fn settings_button<'a>() -> Element<'a, Message> {
+    // Looked up once: the icon theme doesn't change under the applet.
+    static INSTALLED: LazyLock<bool> =
+        LazyLock::new(|| widget::icon::from_name(SETTINGS).path().is_some());
     let space = theme::active().cosmic().spacing;
-    button::icon(widget::icon::from_name(SETTINGS).symbolic(true))
-        .icon_size(16)
+    let handle = if *INSTALLED {
+        widget::icon::from_name(SETTINGS).prefer_svg(true)
+    } else {
+        widget::icon::from_name(SETTINGS_FALLBACK).symbolic(true)
+    };
+    button::icon(handle)
+        .icon_size(18)
         .padding(space.space_xxxs)
         .tooltip(fl!("customize"))
         .on_press(Message::Customize(true))
@@ -642,8 +653,8 @@ impl cosmic::Application for NowPlaying {
 
 impl NowPlaying {
     /// The card, and under it only what's going on: other players to pick
-    /// from, apps recording, the battery charging. Customize is the cog in
-    /// the card's corner, so the card alone is the whole popup most of the time.
+    /// from, apps recording, the battery charging. Customize is the Settings
+    /// icon in the card's corner, so the card alone is the whole popup most of the time.
     fn activities_page(&self) -> Element<'_, Message> {
         let space = theme::active().cosmic().spacing;
         let mut content = widget::column::with_capacity(8);
@@ -671,7 +682,7 @@ impl NowPlaying {
     }
 
     /// The card from the macOS menu bar: the cover on the left; on the
-    /// right the title with the bars and the cog beside it, the artist, the
+    /// right the title with the bars and the Settings icon beside it, the artist, the
     /// controls, the progress, and under it the time gone and the time left.
     fn now_playing<'a>(&'a self, media: &'a Media) -> Vec<Element<'a, Message>> {
         let space = theme::active().cosmic().spacing;
@@ -683,14 +694,20 @@ impl NowPlaying {
         };
         let heading = widget::row::with_children(vec![
             widget::column::with_children(vec![
-                text::heading(media.title.clone())
-                    .size(16.0)
-                    .ellipsize(one_line())
-                    .into(),
-                text::body(artist)
-                    .ellipsize(one_line())
-                    .class(dimmed())
-                    .into(),
+                // Too long for their room, title and artist scroll instead of
+                // being cut short.
+                Marquee::new(
+                    text::heading(media.title.clone())
+                        .size(16.0)
+                        .wrapping(iced::widget::text::Wrapping::None),
+                )
+                .into(),
+                Marquee::new(
+                    text::body(artist)
+                        .class(dimmed())
+                        .wrapping(iced::widget::text::Wrapping::None),
+                )
+                .into(),
             ])
             .spacing(space.space_xxxs)
             .width(Length::Fill)
@@ -926,7 +943,7 @@ impl NowPlaying {
     }
 }
 
-/// Nothing playing: a note, with the cog in the same corner as on the card.
+/// Nothing playing: a note, with the Settings icon in the same corner as on the card.
 fn empty_section<'a>() -> Element<'a, Message> {
     let space = theme::active().cosmic().spacing;
     widget::container(

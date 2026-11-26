@@ -19,19 +19,22 @@ Middle-click the applet to play or pause.
 Clicking the applet opens a Now Playing card like the one in the macOS menu bar:
 
 - a large cover on the left (click it to bring up the player's window)
-- the title, with the bars beside it, and the artist under it
+- the title and the artist, each scrolling when it is too long to fit
+- the bars and the COSMIC Settings icon in the top-right corner
 - previous, play/pause and next, flat, with play/pause larger
 - a progress bar you can drag, with the time played and the time left under it (`01:07`, `−02:59`)
 
 With more than one player open, they are listed under the card to pick from. Apps recording
-and the battery show below it only while they are active. **Customize**, at the bottom, picks
-what the panel shows (the cover, the title and its maximum width, the bars) and which activities
+and the battery show below it only while they are active. The Settings icon opens **Customize**,
+which picks what the panel shows (the cover, the title and its maximum width, the bars) and which activities
 the applet follows.
 
 ## What changed from the original
 
 - No timer: the countdown, its presets, the "time's up" alert and its notification are gone.
-- The popup is the Now Playing card above instead of a list.
+- The popup is the Now Playing card above instead of a list, with Customize behind an icon in its
+  corner instead of a row of its own.
+- Covers stay put while browsers replace their cover files, instead of flickering.
 - Built like cosmic-applets: a library with `run()`, Fluent translations through `i18n-embed`,
   settings through `CosmicConfigEntry` watched with `Core::watch_config`, the popup opened with
   `surface::action::app_popup` and placed under the applet with a rectangle tracker, a `justfile`
