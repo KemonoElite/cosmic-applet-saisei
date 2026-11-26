@@ -20,12 +20,12 @@ Clicking the applet opens a Now Playing card like the one in the macOS menu bar:
 
 - a large cover on the left (click it to bring up the player's window)
 - the title and the artist, each scrolling when it is too long to fit
-- the bars and the COSMIC Settings icon in the top-right corner
+- the bars and a small toggle switch in the top-right corner
 - previous, play/pause and next, flat, with play/pause larger
 - a progress bar you can drag, with the time played and the time left under it (`01:07`, `−02:59`)
 
 With more than one player open, they are listed under the card to pick from. Apps recording
-and the battery show below it only while they are active. The Settings icon opens **Customize**,
+and the battery show below it only while they are active. The toggle opens **Customize**,
 which picks what the panel shows (the cover, the title and its maximum width, the bars) and which activities
 the applet follows.
 

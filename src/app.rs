@@ -6,7 +6,6 @@
 
 use std::{
     collections::HashMap,
-    sync::LazyLock,
     time::{Duration, Instant},
 };
 
@@ -47,10 +46,6 @@ const GO_BACK: &str = "media-skip-backward-symbolic";
 const GO_NEXT: &str = "media-skip-forward-symbolic";
 const PAUSE: &str = "media-playback-pause-symbolic";
 const PLAY: &str = "media-playback-start-symbolic";
-/// What opens Customize: the COSMIC Settings app's own icon, in color, as
-/// it ships only that one; the theme's cog where it isn't installed.
-const SETTINGS: &str = "com.system76.CosmicSettings";
-const SETTINGS_FALLBACK: &str = "emblem-system-symbolic";
 
 pub struct NowPlaying {
     core: app::Core,
@@ -175,19 +170,15 @@ fn divided<'a>() -> Element<'a, Message> {
         .into()
 }
 
-/// The Settings icon in the card's corner, opening Customize.
+/// A toggle switch in the card's corner, opening Customize: drawn in the
+/// theme's text color, as the play buttons are.
 fn settings_button<'a>() -> Element<'a, Message> {
-    // Looked up once: the icon theme doesn't change under the applet.
-    static INSTALLED: LazyLock<bool> =
-        LazyLock::new(|| widget::icon::from_name(SETTINGS).path().is_some());
     let space = theme::active().cosmic().spacing;
-    let handle = if *INSTALLED {
-        widget::icon::from_name(SETTINGS).prefer_svg(true)
-    } else {
-        widget::icon::from_name(SETTINGS_FALLBACK).symbolic(true)
-    };
+    let handle =
+        widget::icon::from_svg_bytes(&include_bytes!("../data/customize-symbolic.svg")[..])
+            .symbolic(true);
     button::icon(handle)
-        .icon_size(18)
+        .icon_size(16)
         .padding(space.space_xxxs)
         .tooltip(fl!("customize"))
         .on_press(Message::Customize(true))
@@ -653,8 +644,8 @@ impl cosmic::Application for NowPlaying {
 
 impl NowPlaying {
     /// The card, and under it only what's going on: other players to pick
-    /// from, apps recording, the battery charging. Customize is the Settings
-    /// icon in the card's corner, so the card alone is the whole popup most of the time.
+    /// from, apps recording, the battery charging. Customize is the toggle
+    /// in the card's corner, so the card alone is the whole popup most of the time.
     fn activities_page(&self) -> Element<'_, Message> {
         let space = theme::active().cosmic().spacing;
         let mut content = widget::column::with_capacity(8);
@@ -682,7 +673,7 @@ impl NowPlaying {
     }
 
     /// The card from the macOS menu bar: the cover on the left; on the
-    /// right the title with the bars and the Settings icon beside it, the artist, the
+    /// right the title with the bars and the Customize toggle beside it, the artist, the
     /// controls, the progress, and under it the time gone and the time left.
     fn now_playing<'a>(&'a self, media: &'a Media) -> Vec<Element<'a, Message>> {
         let space = theme::active().cosmic().spacing;
@@ -943,7 +934,7 @@ impl NowPlaying {
     }
 }
 
-/// Nothing playing: a note, with the Settings icon in the same corner as on the card.
+/// Nothing playing: a note, with the Customize toggle in the same corner as on the card.
 fn empty_section<'a>() -> Element<'a, Message> {
     let space = theme::active().cosmic().spacing;
     widget::container(
