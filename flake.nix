@@ -37,6 +37,7 @@
           buildInputs = with pkgs; [
             libxkbcommon
             libglvnd # For libEGL
+            stdenv.cc.cc.lib # libgcc_s.so.1, which every Rust binary links against
           ];
           runtimeDependencies = with pkgs; [ wayland libglvnd ];
         };
