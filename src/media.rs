@@ -7,7 +7,7 @@ use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
     num::NonZeroUsize,
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -29,7 +29,8 @@ pub struct Media {
     pub desktop_entry: Option<String>,
     pub title: String,
     pub artist: String,
-    /// The cover, saved locally and cropped square.
+    /// The cover, saved in the applet's cache and cropped square: a file
+    /// that stays put, never the player's own, which it may delete.
     pub art: Option<PathBuf>,
     pub playing: bool,
     pub track: Option<OwnedObjectPath>,
@@ -115,14 +116,6 @@ fn text(metadata: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
     })
 }
 
-async fn modified(path: &Path) -> Option<u64> {
-    let modified = tokio::fs::metadata(path).await.ok()?.modified().ok()?;
-    modified
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()
-        .map(|d| d.as_secs())
-}
-
 /// A file a player names: on the host, or, from a player in a Flatpak
 /// sandbox (browsers leave covers in their own /tmp), seen through its
 /// process's root.
@@ -145,57 +138,74 @@ fn visible(path: PathBuf) -> Option<PathBuf> {
         .find(|candidate| candidate.exists())
 }
 
-/// A square local copy of the cover: players give a `file://` path or a web
-/// address, and browsers a video's wide thumbnail, the art in its middle.
-async fn cover(url: &str) -> Option<PathBuf> {
-    let dir = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))?
-        .join(crate::APP_ID)
-        .join("covers");
-    let local = match url.strip_prefix("file://") {
-        Some(path) => {
-            let path = PathBuf::from(path);
-            Some(
-                tokio::task::spawn_blocking(move || visible(path))
-                    .await
-                    .ok()??,
-            )
-        }
-        None if url.starts_with("http") => None,
-        None => return None,
-    };
+fn cache_dir() -> Option<PathBuf> {
+    Some(
+        std::env::var_os("XDG_CACHE_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))?
+            .join(crate::APP_ID)
+            .join("covers"),
+    )
+}
+
+fn hash_of(value: impl Hash) -> u64 {
     let mut hasher = DefaultHasher::new();
-    url.hash(&mut hasher);
-    // Browsers write each cover over the same file.
-    if let Some(path) = &local {
-        modified(path).await?.hash(&mut hasher);
-    }
-    let name = format!("{:016x}", hasher.finish());
-    let square = dir.join(format!("{name}.png"));
+    value.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// A square copy of the cover in the applet's cache. Players give a
+/// `file://` path or a web address; browsers write each cover to a temporary
+/// file they replace and delete as they go, so the copy is named after the
+/// picture itself: the same picture is always the same file, whatever file
+/// the player wrote it to. Browsers give a video's wide thumbnail, so the
+/// square in its middle is kept.
+async fn cover(url: &str) -> Option<PathBuf> {
+    let dir = cache_dir()?;
+    let (name, bytes) = if url.starts_with("file://") {
+        // Paths come percent-encoded: spaces as %20 and so on.
+        let path = url::Url::parse(url).ok()?.to_file_path().ok()?;
+        let path = tokio::task::spawn_blocking(move || visible(path))
+            .await
+            .ok()??;
+        // Gone already, or half written: the caller keeps the cover it had.
+        let bytes = tokio::fs::read(&path)
+            .await
+            .ok()
+            .filter(|b| !b.is_empty())?;
+        (hash_of(&bytes), Some(bytes))
+    } else if url.starts_with("http://") || url.starts_with("https://") {
+        (hash_of(url), None)
+    } else {
+        return None;
+    };
+    let square = dir.join(format!("{name:016x}.png"));
     if square.exists() {
         return Some(square);
     }
-    tokio::fs::create_dir_all(&dir).await.ok()?;
-    let bytes = match &local {
-        Some(path) => tokio::fs::read(path).await.ok()?,
+    let bytes = match bytes {
+        Some(bytes) => bytes,
         None => {
             let output = tokio::process::Command::new("curl")
                 .args(["-sfL", "--max-time", "5", url])
                 .output()
                 .await
                 .ok()?;
-            if !output.status.success() {
+            if !output.status.success() || output.stdout.is_empty() {
                 return None;
             }
             output.stdout
         }
     };
-    let saved = square.clone();
-    let cropped = tokio::task::spawn_blocking(move || {
+    tokio::fs::create_dir_all(&dir).await.ok()?;
+    let (saved, part) = (square.clone(), dir.join(format!("{name:016x}.part")));
+    tokio::task::spawn_blocking(move || {
         // Browsers save it without an extension: tell the format by its bytes.
-        let image = image::load_from_memory(&bytes)?;
+        let image = image::load_from_memory(&bytes)
+            .inspect_err(|err| tracing::debug!("cannot read the cover: {err}"))
+            .ok()?;
         let side = image.width().min(image.height());
+        // Written aside, then moved into place: never seen half written.
         image
             .crop_imm(
                 (image.width() - side) / 2,
@@ -204,18 +214,14 @@ async fn cover(url: &str) -> Option<PathBuf> {
                 side,
             )
             .thumbnail(256, 256)
-            .save(&saved)?;
-        Ok::<(), image::ImageError>(())
+            .save_with_format(&part, image::ImageFormat::Png)
+            .inspect_err(|err| tracing::debug!("cannot save the cover: {err}"))
+            .ok()?;
+        std::fs::rename(&part, &saved).ok()?;
+        Some(saved)
     })
-    .await;
-    match cropped {
-        Ok(Ok(())) => Some(square),
-        Ok(Err(err)) => {
-            tracing::debug!("cannot crop the cover: {err}");
-            local
-        }
-        Err(_) => None,
-    }
+    .await
+    .ok()?
 }
 
 async fn read(conn: &zbus::Connection, service: &str) -> zbus::Result<Media> {
@@ -256,8 +262,11 @@ async fn read(conn: &zbus::Connection, service: &str) -> zbus::Result<Media> {
     })
 }
 
+/// The last cover each player had, with the song it was for.
+type Covers = HashMap<String, (String, String, PathBuf)>;
+
 /// The players with something loaded, those playing first.
-async fn players(conn: &zbus::Connection) -> Vec<Media> {
+async fn players(conn: &zbus::Connection, covers: &mut Covers) -> Vec<Media> {
     let Ok(dbus) = fdo::DBusProxy::new(conn).await else {
         return Vec::new();
     };
@@ -274,6 +283,28 @@ async fn players(conn: &zbus::Connection) -> Vec<Media> {
             Err(err) => tracing::debug!("cannot read {name}: {err}"),
         }
     }
+    for media in &mut players {
+        match &media.art {
+            Some(art) => {
+                covers.insert(
+                    media.service.clone(),
+                    (media.title.clone(), media.artist.clone(), art.clone()),
+                );
+            }
+            // Players resend their metadata often, at times without the
+            // cover or before it's written: the same song keeps the one it had.
+            None => {
+                if let Some((title, artist, art)) = covers.get(&media.service)
+                    && *title == media.title
+                    && *artist == media.artist
+                    && art.exists()
+                {
+                    media.art = Some(art.clone());
+                }
+            }
+        }
+    }
+    covers.retain(|service, _| players.iter().any(|m| &m.service == service));
     // Stable: the order players came in otherwise.
     players.sort_by_key(|m| !m.playing);
     players
@@ -319,8 +350,13 @@ pub fn subscription() -> Subscription<Vec<Media>> {
                 }
             }
             let mut changes = futures::stream::select_all(streams);
+            let mut covers = Covers::new();
             loop {
-                if output.send(players(&conn).await).await.is_err() {
+                if output
+                    .send(players(&conn, &mut covers).await)
+                    .await
+                    .is_err()
+                {
                     return;
                 }
                 if changes.next().await.is_none() {
