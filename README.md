@@ -1,86 +1,147 @@
-# Saisei for the COSMIC panel
+# Saisei
+
+A now-playing applet for the [COSMIC™](https://github.com/pop-os/cosmic-epoch) desktop panel, with a card like Now Playing in the macOS menu bar.
 
 *Saisei* (再生) is Japanese for "playback", the word on Japanese play buttons.
 
-A rewrite of [cosmic-ext-applet-dynamic-island](https://github.com/DrakRosmann/cosmic-ext-applet-dynamic-island),
-laid out like the applets in [pop-os/cosmic-applets](https://github.com/pop-os/cosmic-applets).
+<img src="screenshots/saisei.png" alt="Saisei's card open under the panel" width="380">
 
-In the panel, the applet shows what's playing: the cover, the title and bars that move in your
-accent color while it plays. It works with any MPRIS player (Spotify, browsers, VLC, mpv,
-Rhythmbox…). A paused player leaves the applet after 5 minutes.
+## Features
 
-With nothing playing, it shows only its icon, like the other applets.
-Middle-click the applet to play or pause.
+- **What's playing, in the panel** - the song's cover, its title, and bars that dance in your accent color while it plays
+  - A paused song stays for 5 minutes, then the applet goes back to its icon
+- **A Now Playing card** - click the applet for a large cover, the title and artist, previous, play/pause and next, and the song's progress with the time played and the time left
+  - Drag the progress bar to jump anywhere in the song
+  - Click the cover to bring the player's window up
+  - Titles and artists too long to fit scroll instead of being cut short
+- **Any MPRIS player** - Spotify, browsers, VLC, mpv, Rhythmbox, Elisa and more
+  - With more than one player open, pick which one the card shows; a player that starts playing takes over by itself
+- **Covers from anywhere** - local files, web addresses, and Flatpak browsers that keep their covers inside their sandbox
+  - Wide video thumbnails are cropped square, and covers stay put while browsers replace their cover files
+- **Middle-click** the applet to play or pause without opening it
+- **Drawn in your COSMIC theme** - its colors, corners and spacing, in light and dark
 
-## The popup
+## Localization
 
-Clicking the applet opens a card like Now Playing in the macOS menu bar:
+Saisei is available in English and Brazilian Portuguese.
 
-- a large cover on the left (click it to bring up the player's window)
-- the title and the artist, each scrolling when it is too long to fit
-- the bars and a small toggle switch in the top-right corner
-- previous, play/pause and next, flat, with play/pause larger
-- a progress bar you can drag, with the time played and the time left under it (`01:07`, `−02:59`)
+To add a language, copy `i18n/en/cosmic_applet_saisei.ftl` into a new locale directory under `i18n/` (for example `i18n/de/`), and translate the value to the right of each `=`, leaving the keys unchanged.
 
-With more than one player open, they are listed under the card to pick from. The toggle opens
-**Customize**, which turns the cover, the title and the bars on the panel on or off.
+Song titles, artists and player names come from the player and keep their own wording.
 
-## What changed from the original
-
-- No timer: the countdown, its presets, the "time's up" alert and its notification are gone.
-- The popup is the card above instead of a list, with Customize behind an icon in its
-  corner instead of a row of its own.
-- Covers stay put while browsers replace their cover files, instead of flickering.
-- Built like cosmic-applets: a library with `run()`, Fluent translations through `i18n-embed`,
-  settings through `CosmicConfigEntry` watched with `Core::watch_config`, the popup opened with
-  `surface::action::app_popup` and placed under the applet with a rectangle tracker, a `justfile`
-  and a `flake.nix` like theirs.
-- Pinned to the same libcosmic revision, zbus 6 and patches as cosmic-applets.
-- App ID `dev.cosmic_ext.CosmicAppletSaisei`. To change it, edit `APP_ID` in `src/lib.rs`,
-  `appid` in the `justfile`, and rename the files in `data/`.
-
-## Install
-
-You need Rust 1.95 or newer, `just`, and libcosmic's build dependencies (`libxkbcommon`,
-`wayland`, `libEGL`, `pkg-config`). At runtime, `curl` is used
-to fetch covers players give as web links.
-
-```sh
-just                       # build
-sudo just install          # into /usr
-just prefix=~/.local install   # or for your user only
-```
-
-Then add **Saisei** in Settings > Desktop > Panel > Applets, best in the middle of the top panel.
+## Installation
 
 ### NixOS
 
-```sh
-nix build        # ./result/bin/cosmic-applet-saisei
-nix develop      # a shell with everything to build it
-```
-
-Or in your system flake:
+Saisei's flake provides a package and a NixOS module. In your system flake:
 
 ```nix
 inputs.cosmic-applet-saisei = {
   url = "github:KemonoElite/cosmic-applet-saisei";
   inputs.nixpkgs.follows = "nixpkgs";
 };
-
-# in the host's modules:
-inputs.cosmic-applet-saisei.nixosModules.default
-{ programs.cosmic-applet-saisei.enable = true; }
 ```
 
-The package wraps the program with `curl` on its `PATH`.
+Then add the module to your host and turn it on:
+
+```nix
+modules = [
+  inputs.cosmic-applet-saisei.nixosModules.default
+  { programs.cosmic-applet-saisei.enable = true; }
+];
+```
+
+Rebuild, and update it later with `nix flake update cosmic-applet-saisei`.
+
+To try it without installing:
+
+- Build: `nix build github:KemonoElite/cosmic-applet-saisei`
+- Development shell: `nix develop`
+
+### From source
+
+Requires Rust 1.95 or newer, [just](https://github.com/casey/just), and the `pkg-config`, `libxkbcommon-dev`, `libwayland-dev` and `libegl-dev` system dependencies. Covers that players give as web addresses are fetched with `curl`.
+
+- Install: `just build-release && sudo just install`
+- Install for your user only: `just build-release && just prefix=$HOME/.local install`
+- Uninstall: `sudo just uninstall` (or `just prefix=$HOME/.local uninstall`)
+
+## Usage
+
+1. Open **Settings → Desktop → Panel → Applets**
+2. Add **Saisei**, best in the middle of the top panel
+3. Play something in any app: it shows up in the panel
+4. Click the applet to open the card; middle-click it to play or pause
+
+## Configuration
+
+Click the toggle in the card's top-right corner to open **Customize**, and choose what the applet shows in the panel:
+
+- **Cover** - the song's cover
+- **Song title** - the title, up to about 240 pixels wide
+- **Animated bars** - the bars that move while it plays
+
+With all three off, the applet shows a music note while something plays.
+
+Settings are kept by COSMIC in `~/.config/cosmic/dev.cosmic_ext.CosmicAppletSaisei/v1/`, as the files `show_cover`, `show_title` and `show_bars`, each holding `true` or `false`. A change made in one panel shows in every other.
+
+## Troubleshooting
+
+### Saisei isn't in the list of applets
+
+- Make sure it's installed: `which cosmic-applet-saisei` should print a path
+- Log out and back in, so the panel sees the new applet
+
+### A player doesn't show up
+
+- The player needs to support MPRIS. Most do; in Firefox, check that `media.hardwaremediakeys.enabled` is on in `about:config`
+- Check what's on the bus: `busctl --user list | grep mpris`. Saisei shows every player listed there that has a song loaded
+- `playerctld` is left out on purpose: it mirrors another player, which already shows
+
+### No cover
+
+- Covers come from the player; some don't give one, or not for every song
+- Covers given as web addresses need `curl` (the NixOS package brings its own)
+- Saved covers are in `~/.cache/dev.cosmic_ext.CosmicAppletSaisei/covers/`, and it's safe to delete them at any time
+
+### No progress bar
+
+Live streams and radio have no length, so there's nothing to show progress against. The card shows the controls without it.
+
+### More detail
+
+Run it from a terminal with logging turned up, and the popup opening by itself:
+
+```sh
+COSMIC_SAISEI_PREVIEW=popup RUST_LOG=cosmic_applet_saisei=debug cosmic-applet-saisei
+```
 
 ## Development
 
-`just run` starts the applet with its popup open. `COSMIC_SAISEI_PREVIEW=popup` opens the popup
-by itself when it starts, and `=settings` opens it on Customize, to take screenshots without
-clicking the panel. `just check` runs clippy.
+```sh
+just build-debug   # build a debug version
+just run           # run it with its popup open and debug logging
+just check         # run clippy
+```
+
+`COSMIC_SAISEI_PREVIEW=settings` opens the popup on Customize instead.
+
+## Packaging
+
+Stage the install with `rootdir` and set where it will live with `prefix`:
+
+```sh
+just build-release
+just rootdir="$pkgdir" prefix=/usr install
+```
+
+To build offline, `just vendor` packs the dependencies into `vendor.tar`, and `just build-vendored` builds from it.
 
 ## License
 
-GPL-3.0-only. Provided as is, without warranty: use it at your own risk.
+GNU General Public License v3.0 only - see [LICENSE](LICENSE). Provided as is, without warranty: use it at your own risk.
+
+## Acknowledgments
+
+- [cosmic-ext-applet-dynamic-island](https://github.com/DrakRosmann/cosmic-ext-applet-dynamic-island) by DrakRosmann - the applet Saisei was rewritten from
+- [System76](https://system76.com/) / [libcosmic](https://github.com/pop-os/libcosmic) and [cosmic-applets](https://github.com/pop-os/cosmic-applets) - the COSMIC desktop, its UI toolkit, and the applets Saisei is laid out like
