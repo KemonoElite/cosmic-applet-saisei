@@ -4,7 +4,12 @@ A now-playing applet for the [COSMIC™](https://github.com/pop-os/cosmic-epoch)
 
 *Saisei* (再生) is Japanese for "playback", the word on Japanese play buttons.
 
-<img src="screenshots/saisei.png" alt="Saisei's card open under the panel" width="380">
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/saisei.png" alt="Saisei's card open under the panel" width="380"></td>
+    <td align="center"><img src="screenshots/saisei.gif" alt="Saisei in use" width="380"></td>
+  </tr>
+</table>
 
 ## Features
 
