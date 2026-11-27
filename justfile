@@ -44,7 +44,9 @@ _install_bin:
 install-data:
     install -Dm0644 data/{{ appid }}.desktop {{ sharedir }}/applications/{{ appid }}.desktop
     install -Dm0644 data/{{ appid }}.metainfo.xml {{ sharedir }}/metainfo/{{ appid }}.metainfo.xml
-    find data/icons -type f -exec echo {} \; | rev | cut -d'/' -f-3 | rev | xargs -d '\n' -I {} install -Dm0644 data/icons/{} {{ iconsdir }}/{}
+    # Each icon at its path under data/icons. Only find, xargs and install:
+    # `rev` isn't in Nix's build environment, and without it nothing installs.
+    find data/icons -type f -printf '%P\n' | xargs -d '\n' -I {} install -Dm0644 data/icons/{} {{ iconsdir }}/{}
 
 # Installs files into the system
 install: _install_bin install-data
@@ -54,7 +56,7 @@ uninstall:
     rm -f {{ bindir }}/{{ name }}
     rm -f {{ sharedir }}/applications/{{ appid }}.desktop
     rm -f {{ sharedir }}/metainfo/{{ appid }}.metainfo.xml
-    find data/icons -type f -exec echo {} \; | rev | cut -d'/' -f-3 | rev | xargs -d '\n' -I {} rm -f {{ iconsdir }}/{}
+    find data/icons -type f -printf '%P\n' | xargs -d '\n' -I {} rm -f {{ iconsdir }}/{}
 
 # Vendor Cargo dependencies locally
 vendor:

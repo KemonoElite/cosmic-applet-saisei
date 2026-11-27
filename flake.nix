@@ -48,6 +48,9 @@
           inherit cargoArtifacts;
           postInstall = ''
             just prefix=$out install-data
+            # Fail the build, not the panel, if the icons didn't install.
+            test -f $out/share/icons/hicolor/scalable/apps/dev.cosmic_ext.CosmicAppletSaisei-symbolic.svg
+            test -f $out/share/icons/hicolor/scalable/apps/dev.cosmic_ext.CosmicAppletSaisei.svg
             # curl fetches covers players give as web links.
             wrapProgram $out/bin/cosmic-applet-saisei \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.curl ]}
