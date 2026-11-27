@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-//! Now Playing for the COSMIC panel, laid out as the applets in
+//! Saisei (再生, "playback") for the COSMIC panel, laid out as the applets in
 //! pop-os/cosmic-applets: a library with `run()`, Fluent translations, its
 //! settings in cosmic-config.
 
@@ -10,9 +10,9 @@ mod localize;
 mod media;
 mod widgets;
 
-pub const APP_ID: &str = "dev.cosmic_ext.CosmicAppletNowPlaying";
+pub const APP_ID: &str = "dev.cosmic_ext.CosmicAppletSaisei";
 
 pub fn run() -> cosmic::iced::Result {
     localize::localize();
-    cosmic::applet::run::<app::NowPlaying>(())
+    cosmic::applet::run::<app::Saisei>(())
 }

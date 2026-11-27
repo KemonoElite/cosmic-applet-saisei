@@ -1,9 +1,9 @@
 [package]
-name = "cosmic-applet-now-playing"
+name = "cosmic-applet-saisei"
 version = "0.2.0"
 edition = "2024"
 license = "GPL-3.0-only"
-description = "What's playing in the COSMIC panel, opening into a Now Playing card like macOS's"
+description = "Saisei: what's playing in the COSMIC panel, opening into a card like macOS's Now Playing"
 rust-version = "1.95"
 
 [dependencies]

@@ -1,5 +1,5 @@
 {
-  description = "Now Playing: what's playing, in the COSMIC panel";
+  description = "Saisei: what's playing, in the COSMIC panel";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -21,7 +21,7 @@
         craneLib = (crane.mkLib pkgs).overrideToolchain fenix.packages.${system}.stable.toolchain;
 
         pkgDef = {
-          pname = "cosmic-applet-now-playing";
+          pname = "cosmic-applet-saisei";
           version = "0.2.0";
           src = nix-filter.lib.filter {
             root = ./.;
@@ -44,31 +44,31 @@
 
         cargoArtifacts = craneLib.buildDepsOnly pkgDef;
 
-        now-playing = craneLib.buildPackage (pkgDef // {
+        saisei = craneLib.buildPackage (pkgDef // {
           inherit cargoArtifacts;
           postInstall = ''
             just prefix=$out install-data
             # curl fetches covers players give as web links.
-            wrapProgram $out/bin/cosmic-applet-now-playing \
+            wrapProgram $out/bin/cosmic-applet-saisei \
               --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.curl ]}
           '';
           meta = {
             description = "What's playing, in the COSMIC panel";
             license = pkgs.lib.licenses.gpl3Only;
-            mainProgram = "cosmic-applet-now-playing";
+            mainProgram = "cosmic-applet-saisei";
             platforms = pkgs.lib.platforms.linux;
           };
         });
       in {
         checks = {
-          inherit now-playing;
+          inherit saisei;
         };
 
-        packages.default = now-playing;
-        packages.cosmic-applet-now-playing = now-playing;
+        packages.default = saisei;
+        packages.cosmic-applet-saisei = saisei;
 
         apps.default = flake-utils.lib.mkApp {
-          drv = now-playing;
+          drv = saisei;
         };
 
         devShells.default = pkgs.mkShell rec {
@@ -78,21 +78,21 @@
         };
       })
     // {
-      # programs.cosmic-applet-now-playing.enable = true;
-      nixosModules.default = self.nixosModules.cosmic-applet-now-playing;
-      nixosModules.cosmic-applet-now-playing = { config, lib, pkgs, ... }:
+      # programs.cosmic-applet-saisei.enable = true;
+      nixosModules.default = self.nixosModules.cosmic-applet-saisei;
+      nixosModules.cosmic-applet-saisei = { config, lib, pkgs, ... }:
         let
-          cfg = config.programs.cosmic-applet-now-playing;
+          cfg = config.programs.cosmic-applet-saisei;
         in
         {
-          options.programs.cosmic-applet-now-playing = {
-            enable = lib.mkEnableOption "the Now Playing applet for the COSMIC panel";
+          options.programs.cosmic-applet-saisei = {
+            enable = lib.mkEnableOption "the Saisei applet for the COSMIC panel";
 
             package = lib.mkOption {
               type = lib.types.package;
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-              defaultText = lib.literalExpression "cosmic-applet-now-playing.packages.\${pkgs.stdenv.hostPlatform.system}.default";
-              description = "The Now Playing applet package to install.";
+              defaultText = lib.literalExpression "cosmic-applet-saisei.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+              description = "The Saisei applet package to install.";
             };
           };
 

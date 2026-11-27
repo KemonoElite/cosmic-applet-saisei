@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-//! Now Playing: what's playing, in the panel, opening into a Now Playing
-//! card like the one in the macOS menu bar, drawn with COSMIC's theme as its
+//! Saisei (再生, "playback"): what's playing, in the panel, opening into a
+//! card like Now Playing in the macOS menu bar, drawn with COSMIC's theme as its
 //! own applets are.
 
 use std::{
@@ -27,7 +27,7 @@ use cosmic::{
 };
 
 use crate::{
-    config::{NowPlayingConfig, Toggle},
+    config::{SaiseiConfig, Toggle},
     fl,
     media::{self, Control, Media},
     widgets::{Bars, Marquee, accent, alpha, icon},
@@ -45,7 +45,7 @@ const GO_NEXT: &str = "media-skip-forward-symbolic";
 const PAUSE: &str = "media-playback-pause-symbolic";
 const PLAY: &str = "media-playback-start-symbolic";
 
-pub struct NowPlaying {
+pub struct Saisei {
     core: app::Core,
     popup: Option<window::Id>,
     media: Vec<Media>,
@@ -55,7 +55,7 @@ pub struct NowPlaying {
     paused_since: HashMap<String, Instant>,
     /// Where the progress is being dragged to, in microseconds.
     seeking: Option<f32>,
-    config: NowPlayingConfig,
+    config: SaiseiConfig,
     config_handler: Option<cosmic_config::Config>,
     /// The popup's settings page, instead of the card.
     customizing: bool,
@@ -77,7 +77,7 @@ pub enum Message {
     SeekDone,
     Customize(bool),
     Set(Toggle, bool),
-    ConfigChanged(NowPlayingConfig),
+    ConfigChanged(SaiseiConfig),
     /// Time passing: the progress moves, a paused player leaves.
     Tick,
     Ignore,
@@ -118,7 +118,7 @@ fn dimmed() -> theme::Text {
 fn applet_icon() -> widget::icon::Handle {
     widget::icon::from_svg_bytes(
         &include_bytes!(
-            "../data/icons/scalable/apps/dev.cosmic_ext.CosmicAppletNowPlaying-symbolic.svg"
+            "../data/icons/scalable/apps/dev.cosmic_ext.CosmicAppletSaisei-symbolic.svg"
         )[..],
     )
     .symbolic(true)
@@ -170,7 +170,7 @@ fn cover<'a>(media: &Media, side: f32) -> Element<'a, Message> {
     }
 }
 
-impl NowPlaying {
+impl Saisei {
     /// The player shown: the one picked, or the one playing.
     fn shown_media(&self) -> Option<&Media> {
         self.selected
@@ -241,18 +241,18 @@ impl NowPlaying {
     }
 }
 
-impl cosmic::Application for NowPlaying {
+impl cosmic::Application for Saisei {
     type Message = Message;
     type Executor = cosmic::SingleThreadExecutor;
     type Flags = ();
     const APP_ID: &'static str = crate::APP_ID;
 
     fn init(core: app::Core, _flags: ()) -> (Self, app::Task<Message>) {
-        let config_handler = NowPlayingConfig::handler();
-        let config = NowPlayingConfig::load(config_handler.as_ref());
-        // COSMIC_NOW_PLAYING_PREVIEW=popup opens the popup by itself, =settings on
+        let config_handler = SaiseiConfig::handler();
+        let config = SaiseiConfig::load(config_handler.as_ref());
+        // COSMIC_SAISEI_PREVIEW=popup opens the popup by itself, =settings on
         // its settings, to take screenshots without clicking the panel.
-        let preview = std::env::var("COSMIC_NOW_PLAYING_PREVIEW").unwrap_or_default();
+        let preview = std::env::var("COSMIC_SAISEI_PREVIEW").unwrap_or_default();
         let mut tasks = Vec::new();
         if preview.contains("popup") || preview.contains("settings") {
             tasks.push(Task::future(async {
@@ -416,7 +416,7 @@ impl cosmic::Application for NowPlaying {
     fn subscription(&self) -> Subscription<Message> {
         let mut subscriptions = vec![
             self.core
-                .watch_config::<NowPlayingConfig>(crate::APP_ID)
+                .watch_config::<SaiseiConfig>(crate::APP_ID)
                 .map(|update| {
                     for err in update.errors.iter().filter(|err| err.is_err()) {
                         tracing::error!(?err, "Error watching config");
@@ -503,7 +503,7 @@ impl cosmic::Application for NowPlaying {
         let content = if self.customizing {
             self.settings_page()
         } else {
-            self.now_playing_page()
+            self.card_page()
         };
         self.core.applet.popup_container(content).into()
     }
@@ -513,19 +513,19 @@ impl cosmic::Application for NowPlaying {
     }
 }
 
-impl NowPlaying {
+impl Saisei {
     /// The card, and under it, with more than one player open, the others to
     /// pick from. Customize is the toggle in the card's corner.
-    fn now_playing_page(&self) -> Element<'_, Message> {
+    fn card_page(&self) -> Element<'_, Message> {
         let space = theme::active().cosmic().spacing;
         let content = widget::column::with_capacity(3);
         match self.shown_media() {
             // The players listed under the card get room under them.
             Some(media) if self.media.len() > 1 => content
-                .extend(self.now_playing(media))
+                .extend(self.card(media))
                 .padding([0, 0, space.space_xs, 0])
                 .into(),
-            Some(media) => content.extend(self.now_playing(media)).into(),
+            Some(media) => content.extend(self.card(media)).into(),
             None => content.push(empty_section()).into(),
         }
     }
@@ -533,7 +533,7 @@ impl NowPlaying {
     /// The card from the macOS menu bar: the cover on the left; on the
     /// right the title with the bars and the Customize toggle beside it, the artist, the
     /// controls, the progress, and under it the time gone and the time left.
-    fn now_playing<'a>(&'a self, media: &'a Media) -> Vec<Element<'a, Message>> {
+    fn card<'a>(&'a self, media: &'a Media) -> Vec<Element<'a, Message>> {
         let space = theme::active().cosmic().spacing;
 
         let artist = if media.artist.is_empty() {
@@ -699,9 +699,6 @@ impl NowPlaying {
             )
             .into()
         };
-        let heading = |label: String| -> Element<'_, Message> {
-            padded_control(text::caption_heading(label)).into()
-        };
         let back = menu_button(
             widget::row::with_children(vec![
                 icon("go-previous-symbolic", 16),
@@ -714,7 +711,6 @@ impl NowPlaying {
         widget::column::with_children(vec![
             back.into(),
             divided(),
-            heading(fl!("on-the-panel")),
             toggle(fl!("show-cover"), Toggle::Cover),
             toggle(fl!("show-title"), Toggle::Title),
             toggle(fl!("show-bars"), Toggle::Bars),

@@ -1,4 +1,6 @@
-# Now Playing for the COSMIC panel
+# Saisei for the COSMIC panel
+
+*Saisei* (再生) is Japanese for "playback", the word on Japanese play buttons.
 
 A rewrite of [cosmic-ext-applet-dynamic-island](https://github.com/DrakRosmann/cosmic-ext-applet-dynamic-island),
 laid out like the applets in [pop-os/cosmic-applets](https://github.com/pop-os/cosmic-applets).
@@ -12,7 +14,7 @@ Middle-click the applet to play or pause.
 
 ## The popup
 
-Clicking the applet opens a Now Playing card like the one in the macOS menu bar:
+Clicking the applet opens a card like Now Playing in the macOS menu bar:
 
 - a large cover on the left (click it to bring up the player's window)
 - the title and the artist, each scrolling when it is too long to fit
@@ -26,7 +28,7 @@ With more than one player open, they are listed under the card to pick from. The
 ## What changed from the original
 
 - No timer: the countdown, its presets, the "time's up" alert and its notification are gone.
-- The popup is the Now Playing card above instead of a list, with Customize behind an icon in its
+- The popup is the card above instead of a list, with Customize behind an icon in its
   corner instead of a row of its own.
 - Covers stay put while browsers replace their cover files, instead of flickering.
 - Built like cosmic-applets: a library with `run()`, Fluent translations through `i18n-embed`,
@@ -34,7 +36,7 @@ With more than one player open, they are listed under the card to pick from. The
   `surface::action::app_popup` and placed under the applet with a rectangle tracker, a `justfile`
   and a `flake.nix` like theirs.
 - Pinned to the same libcosmic revision, zbus 6 and patches as cosmic-applets.
-- App ID `dev.cosmic_ext.CosmicAppletNowPlaying`. To change it, edit `APP_ID` in `src/lib.rs`,
+- App ID `dev.cosmic_ext.CosmicAppletSaisei`. To change it, edit `APP_ID` in `src/lib.rs`,
   `appid` in the `justfile`, and rename the files in `data/`.
 
 ## Install
@@ -49,33 +51,33 @@ sudo just install          # into /usr
 just prefix=~/.local install   # or for your user only
 ```
 
-Then add **Now Playing** in Settings > Desktop > Panel > Applets, best in the middle of the top panel.
+Then add **Saisei** in Settings > Desktop > Panel > Applets, best in the middle of the top panel.
 
 ### NixOS
 
 ```sh
-nix build        # ./result/bin/cosmic-applet-now-playing
+nix build        # ./result/bin/cosmic-applet-saisei
 nix develop      # a shell with everything to build it
 ```
 
 Or in your system flake:
 
 ```nix
-inputs.cosmic-applet-now-playing = {
-  url = "github:KemonoElite/cosmic-applet-now-playing";
+inputs.cosmic-applet-saisei = {
+  url = "github:KemonoElite/cosmic-applet-saisei";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
 # in the host's modules:
-inputs.cosmic-applet-now-playing.nixosModules.default
-{ programs.cosmic-applet-now-playing.enable = true; }
+inputs.cosmic-applet-saisei.nixosModules.default
+{ programs.cosmic-applet-saisei.enable = true; }
 ```
 
 The package wraps the program with `curl` on its `PATH`.
 
 ## Development
 
-`just run` starts the applet with its popup open. `COSMIC_NOW_PLAYING_PREVIEW=popup` opens the popup
+`just run` starts the applet with its popup open. `COSMIC_SAISEI_PREVIEW=popup` opens the popup
 by itself when it starts, and `=settings` opens it on Customize, to take screenshots without
 clicking the panel. `just check` runs clippy.
 

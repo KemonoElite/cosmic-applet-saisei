@@ -1,6 +1,6 @@
 # Laid out as pop-os/cosmic-applets' justfile.
-name := 'cosmic-applet-now-playing'
-appid := 'dev.cosmic_ext.CosmicAppletNowPlaying'
+name := 'cosmic-applet-saisei'
+appid := 'dev.cosmic_ext.CosmicAppletSaisei'
 
 rootdir := ''
 prefix := '/usr'
@@ -34,7 +34,7 @@ check *args:
 
 # Runs the applet outside the panel, opening its popup by itself
 run *args:
-    COSMIC_NOW_PLAYING_PREVIEW=popup RUST_LOG=cosmic_applet_now_playing=debug cargo run {{ args }}
+    COSMIC_SAISEI_PREVIEW=popup RUST_LOG=cosmic_applet_saisei=debug cargo run {{ args }}
 
 [private]
 _install_bin:

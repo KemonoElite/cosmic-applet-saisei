@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Saisei: the card in COSMIC's colors, an album cover beside the bars
+       that dance to the music, the song's progress under them. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5cc3cc"/>
+      <stop offset="1" stop-color="#3aa5b1"/>
+    </linearGradient>
+    <linearGradient id="cover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3ad1b"/>
+      <stop offset="1" stop-color="#e48c06"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8e48a"/>
+      <stop offset="1" stop-color="#efd25e"/>
+    </linearGradient>
+  </defs>
+  <!-- A soft shadow, the tile's darker edge, the tile. -->
+  <rect x="8" y="19" width="112" height="94" rx="15" fill="#000000" opacity="0.18"/>
+  <rect x="8" y="17" width="112" height="94" rx="15" fill="#2b8995"/>
+  <rect x="8" y="14" width="112" height="92" rx="15" fill="url(#tile)"/>
+  <!-- The cover. -->
+  <rect x="20" y="28" width="44" height="44" rx="9" fill="url(#cover)"/>
+  <!-- The bars. -->
+  <rect x="75" y="44" width="8" height="28" rx="4" fill="url(#bar)"/>
+  <rect x="88" y="32" width="8" height="40" rx="4" fill="url(#bar)"/>
+  <rect x="101" y="50" width="8" height="22" rx="4" fill="url(#bar)"/>
+  <!-- The progress. -->
+  <rect x="20" y="84" width="89" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+  <rect x="20" y="84" width="52" height="8" rx="4" fill="#efd25e"/>
+</svg>

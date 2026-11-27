@@ -1,0 +1,9 @@
+saisei = Saisei
+nothing-playing = Nothing playing
+nothing-playing-about = Play something in any app and it shows up here
+unknown-artist = Unknown artist
+paused = Paused
+customize = Customize
+show-cover = Cover
+show-title = Song title
+show-bars = Animated bars

@@ -10,14 +10,14 @@ fn main() -> cosmic::iced::Result {
                 // While the popup redraws, iced warns of each event a
                 // subscription doesn't take: dozens a second.
                 .unwrap_or_else(|_| {
-                    "warn,iced_futures::subscription::tracker=error,cosmic_applet_now_playing=info"
+                    "warn,iced_futures::subscription::tracker=error,cosmic_applet_saisei=info"
                         .into()
                 }),
         )
         .init();
     let _ = tracing_log::LogTracer::init();
 
-    tracing::info!("Starting Now Playing applet with version {VERSION}");
+    tracing::info!("Starting Saisei applet with version {VERSION}");
 
-    cosmic_applet_now_playing::run()
+    cosmic_applet_saisei::run()
 }

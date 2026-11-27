@@ -1,0 +1,9 @@
+saisei = Saisei
+nothing-playing = Nada tocando
+nothing-playing-about = Toque algo em qualquer app e ele aparece aqui
+unknown-artist = Artista desconhecido
+paused = Pausado
+customize = Personalizar
+show-cover = Capa
+show-title = Título da música
+show-bars = Barras animadas

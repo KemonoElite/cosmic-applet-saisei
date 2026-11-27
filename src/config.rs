@@ -18,14 +18,14 @@ pub enum Toggle {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CosmicConfigEntry)]
 #[version = 1]
 #[serde(default)]
-pub struct NowPlayingConfig {
+pub struct SaiseiConfig {
     /// On the panel: the cover, the title, and the bars.
     pub show_cover: bool,
     pub show_title: bool,
     pub show_bars: bool,
 }
 
-impl Default for NowPlayingConfig {
+impl Default for SaiseiConfig {
     fn default() -> Self {
         Self {
             show_cover: true,
@@ -35,7 +35,7 @@ impl Default for NowPlayingConfig {
     }
 }
 
-impl NowPlayingConfig {
+impl SaiseiConfig {
     pub fn handler() -> Option<cosmic_config::Config> {
         cosmic_config::Config::new(crate::APP_ID, Self::VERSION)
             .inspect_err(|err| tracing::warn!("cannot open the settings: {err}"))

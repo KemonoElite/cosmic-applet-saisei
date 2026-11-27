@@ -1,0 +1,16 @@
+[Desktop Entry]
+Name=Saisei
+Name[pt_BR]=Saisei
+Comment=What's playing, in the panel, with a card like macOS's Now Playing
+Comment[pt_BR]=O que está tocando, no painel, com um cartão como o Now Playing do macOS
+Type=Application
+Exec=cosmic-applet-saisei
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Applet;Media;Music;MPRIS;Now;Playing;Player;
+Icon=dev.cosmic_ext.CosmicAppletSaisei-symbolic
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicHoverPopup=Auto
+X-HostWaylandDisplay=true

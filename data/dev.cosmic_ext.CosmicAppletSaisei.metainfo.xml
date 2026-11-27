@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.cosmic_ext.CosmicAppletSaisei</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Saisei</name>
+  <summary>What's playing, in the panel, with a card like macOS's Now Playing</summary>
+  <summary xml:lang="pt-BR">O que está tocando, no painel, com um cartão como o Now Playing do macOS</summary>
+  <description>
+    <p>Saisei (再生, "playback") shows what's playing in the COSMIC™ panel. Click it to open a card like Now Playing in the macOS menu bar, drawn in your COSMIC theme.</p>
+    <ul>
+      <li>What's playing in any MPRIS player, with its cover, and bars dancing in the theme's accent color</li>
+      <li>The card: a large cover, the title and artist, previous, play/pause and next, and a progress bar you can drag, with the time gone and the time left</li>
+      <li>Middle-click the applet to play or pause</li>
+    </ul>
+  </description>
+  <icon type="stock">dev.cosmic_ext.CosmicAppletSaisei</icon>
+  <launchable type="desktop-id">dev.cosmic_ext.CosmicAppletSaisei.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.2.0" date="2026-11-26"/>
+  </releases>
+  <provides>
+    <id>com.system76.CosmicApplet</id>
+    <binary>cosmic-applet-saisei</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+  </categories>
+</component>

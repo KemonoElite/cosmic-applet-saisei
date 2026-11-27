@@ -904,7 +904,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmic-applet-now-playing"
+name = "cosmic-applet-saisei"
 version = "0.2.0"
 dependencies = [
  "futures",
